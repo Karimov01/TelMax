@@ -1,2 +1,2 @@
-import type {MetadataRoute} from "next"; import {APP_URL} from "@/lib/constants";
-export default function sitemap():MetadataRoute.Sitemap{return ["","/telefonlar","/sensorli","/tugmali","/aloqa"].map(path=>({url:`${APP_URL}${path}`,lastModified:new Date(),changeFrequency:path?"weekly":"daily",priority:path?0.8:1}))}
+import type {MetadataRoute} from "next";import {APP_URL} from "@/lib/constants";import {listPublicProducts} from "@/services/catalog";
+export default async function sitemap():Promise<MetadataRoute.Sitemap>{const base:MetadataRoute.Sitemap=["","/telefonlar","/sensorli","/tugmali","/aloqa"].map(path=>({url:`${APP_URL}${path}`,lastModified:new Date(),changeFrequency:path?"weekly":"daily",priority:path?0.8:1}));const products=await listPublicProducts();return [...base,...products.map(p=>({url:`${APP_URL}/telefonlar/${p.slug}`,lastModified:new Date(),changeFrequency:"weekly" as const,priority:.7}))]}
