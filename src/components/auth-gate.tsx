@@ -1,0 +1,3 @@
+"use client";
+import {useEffect,useState} from "react"; import {TmLogo} from "./tm-logo";
+export function AuthGate(){const [error,setError]=useState("");useEffect(()=>{const app=window.Telegram?.WebApp;if(!app?.initData){setError("Boshqaruv panelini TelMax Telegram botidagi tugma orqali oching.");return;}fetch("/api/auth/telegram",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({initData:app.initData})}).then(async r=>{if(!r.ok)throw new Error((await r.json()).error);location.reload()}).catch(e=>setError(e.message));},[]);return <div className="auth-gate"><TmLogo/><h1>TelMax</h1><p>{error||"Telegram orqali xavfsiz kirish tekshirilmoqda..."}</p></div>}

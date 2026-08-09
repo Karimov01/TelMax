@@ -1,0 +1,3 @@
+import type {Metadata} from "next"; import {CircleDollarSign} from "@/components/icons";
+export const metadata:Metadata={title:"Aloqa",description:"TelMax telefon do‘koni bilan bog‘lanish."};
+export default function Contact(){return <section className="contact-page"><span>ALOQA</span><h1>Savolingiz bormi?</h1><p>Telefon tanlash, narx yoki mavjudlik bo‘yicha biz bilan bog‘laning.</p><div><article><CircleDollarSign/><strong>Telefon</strong><span>Raqam sozlamalardan qo‘shiladi</span></article><article><CircleDollarSign/><strong>Manzil</strong><span>Manzil sozlamalardan qo‘shiladi</span></article></div></section>}

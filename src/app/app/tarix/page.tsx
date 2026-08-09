@@ -1,0 +1,2 @@
+import {PageHeader} from "@/components/page-header"; import {ShoppingBag} from "@/components/icons";
+export default function History(){return <div className="page-pad inner-page"><PageHeader title="Sotuvlar tarixi" description="Barcha yakunlangan va bekor qilingan sotuvlar"/><div className="empty large"><ShoppingBag/><strong>Hali sotuvlar yo‘q</strong><span>Sotuvlar vaqt, xodim va foyda bilan shu yerda saqlanadi.</span></div></div>}

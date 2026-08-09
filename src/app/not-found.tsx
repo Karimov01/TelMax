@@ -1,0 +1,1 @@
+import Link from "next/link"; export default function NotFound(){return <main className="not-found"><b>404</b><h1>Sahifa topilmadi</h1><p>Bu sahifa mavjud emas yoki o‘chirilgan.</p><Link className="primary-button" href="/">Bosh sahifaga qaytish</Link></main>}

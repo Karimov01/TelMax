@@ -1,0 +1,2 @@
+import Link from "next/link"; import {ChevronRight} from "./icons";
+export function PageHeader({title,description,action}:{title:string;description?:string;action?:{href:string;label:string}}){return <header className="inner-header"><div><h1>{title}</h1>{description&&<p>{description}</p>}</div>{action&&<Link className="primary-button" href={action.href}>{action.label}<ChevronRight/></Link>}</header>}

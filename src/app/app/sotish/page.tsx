@@ -1,0 +1,2 @@
+import {PageHeader} from "@/components/page-header"; import {Search,ShoppingCart} from "@/components/icons";
+export default function Sale(){return <div className="page-pad inner-page"><PageHeader title="Telefon sotish" description="Ombordan mahsulot tanlang"/><div className="search-box"><Search/><input aria-label="Sotish uchun telefon qidirish" placeholder="Model, mahsulot kodi yoki IMEI"/></div><div className="empty large"><ShoppingCart/><strong>Sotiladigan telefonni qidiring</strong><span>Natijadan telefonni tanlab, miqdor va to‘lovni kiriting.</span></div></div>}

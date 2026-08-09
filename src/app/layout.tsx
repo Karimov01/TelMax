@@ -1,0 +1,4 @@
+import type {Metadata,Viewport} from "next"; import "./globals.css"; import {APP_URL} from "@/lib/constants";
+export const metadata:Metadata={metadataBase:new URL(APP_URL),title:{default:"TelMax — Telefon Do‘koni",template:"%s | TelMax"},description:"TelMax telefon do‘koni: sensorli va tugmali telefonlar, narxlar va mavjudlik.",applicationName:"TelMax",openGraph:{title:"TelMax — Telefon Do‘koni",description:"Ishonchli telefonlar va professional xizmat.",type:"website",locale:"uz_UZ",siteName:"TelMax"},robots:{index:true,follow:true}};
+export const viewport:Viewport={width:"device-width",initialScale:1,viewportFit:"cover",themeColor:[{media:"(prefers-color-scheme: dark)",color:"#050506"},{media:"(prefers-color-scheme: light)",color:"#ffffff"}]};
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="uz"><body>{children}</body></html>}
