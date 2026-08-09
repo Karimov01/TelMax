@@ -1,0 +1,4 @@
+type ReplyMarkup = Record<string, unknown>;
+async function callTelegram(method:string,body:Record<string,unknown>){const token=process.env.TELEGRAM_BOT_TOKEN;if(!token)throw new Error("TELEGRAM_BOT_TOKEN sozlanmagan");const response=await fetch(`https://api.telegram.org/bot${token}/${method}`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});if(!response.ok)throw new Error(`Telegram ${method}: ${response.status}`);return response.json();}
+export function sendTelegramMessage(chatId:number,text:string,replyMarkup?:ReplyMarkup){return callTelegram("sendMessage",{chat_id:chatId,text,parse_mode:"HTML",reply_markup:replyMarkup});}
+export function answerTelegramCallback(callbackQueryId:string,text?:string){return callTelegram("answerCallbackQuery",{callback_query_id:callbackQueryId,text});}
