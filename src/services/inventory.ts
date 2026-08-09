@@ -4,8 +4,9 @@ import { and, asc, eq, gt, sql } from "drizzle-orm";
 import { auditLogs, customers, inventoryMovements, products, purchaseBatches, saleItems, sales } from "@/db/schema";
 import type { Role } from "@/lib/permissions";
 import { can } from "@/lib/permissions";
+import { requireDatabaseUrl } from "@/db/url";
 
-function transactionalDb(){ if(!process.env.DATABASE_URL)throw new Error("DATABASE_URL sozlanmagan"); const pool=new Pool({connectionString:process.env.DATABASE_URL}); return {pool,db:drizzle(pool)}; }
+function transactionalDb(){ const pool=new Pool({connectionString:requireDatabaseUrl()}); return {pool,db:drizzle(pool)}; }
 export type FeatureSaleInput={productId:number;quantity:number;unitSalePrice:number;paidAmount:number;customerName:string;customerPhone:string;paymentMethod:"CASH"|"CARD"|"MIXED";actor:{id:number;role:Role}};
 
 export async function sellFeaturePhone(input:FeatureSaleInput){
