@@ -1,7 +1,17 @@
 import {NextResponse} from "next/server";
 import {z} from "zod";
 import {getSession} from "@/lib/session";
+import {purchaseInputSchema} from "@/lib/purchase-contract";
 import {receivePhone} from "@/services/purchases";
 
-const input=z.object({category:z.enum(["SMARTPHONE","FEATURE_PHONE"]),platform:z.enum(["ANDROID","IOS","FEATURE"]),brand:z.string().max(100).default(""),model:z.string().min(1).max(160),description:z.string().max(2000).optional(),storage:z.string().max(50).optional(),ram:z.string().max(50).optional(),color:z.string().max(80).optional(),condition:z.string().max(50).optional(),purchasePrice:z.coerce.number().int().positive(),extraCost:z.coerce.number().int().min(0).default(0),salePrice:z.coerce.number().int().positive(),quantity:z.coerce.number().int().positive().max(1000),imei1:z.string().regex(/^\d{15}$/).or(z.literal("")).optional(),imei2:z.string().regex(/^\d{15}$/).or(z.literal("")).optional(),batteryHealth:z.string().regex(/^(100|[1-9]?\d)$/).or(z.literal("")).optional(),faceId:z.string().max(100).optional(),trueTone:z.string().max(100).optional(),icloud:z.string().max(100).optional(),repair:z.string().max(200).optional(),technicalState:z.string().max(1000).optional(),supplierName:z.string().trim().max(160).optional(),supplierPhone:z.string().trim().max(30).refine(v=>!v||/^\+?[\d\s()-]{7,25}$/.test(v),"Telefon raqamini tekshiring").optional(),imageUrl:z.string().url().max(2048).or(z.literal("")).optional(),isPublished:z.boolean().default(false)}).superRefine((d,ctx)=>{if(d.category==="SMARTPHONE"&&!/^\d{15}$/.test(d.imei1??""))ctx.addIssue({code:"custom",path:["imei1"],message:"IMEI 15 raqam bo‘lishi kerak"});if(d.platform==="IOS"&&d.ram)ctx.addIssue({code:"custom",path:["ram"],message:"iOS uchun RAM kiritilmaydi"});});
-export async function POST(request:Request){const session=await getSession();if(!session)return NextResponse.json({error:"Ruxsat yo‘q"},{status:401});try{const data=input.parse(await request.json());const result=await receivePhone({...data,actor:{id:session.userId,role:session.role}});return NextResponse.json({ok:true,...result});}catch(error){console.error(error);const message=error instanceof z.ZodError?error.issues[0]?.message??"Kiritilgan ma’lumotlarni tekshiring":error instanceof Error?error.message:"Telefonni saqlashda xato";return NextResponse.json({error:message},{status:400});}}
+export async function POST(request:Request){
+ const session=await getSession();if(!session)return NextResponse.json({error:"Ruxsat yo‘q"},{status:401});
+ let raw:unknown;
+ try{raw=await request.json();const data=purchaseInputSchema.parse(raw);const result=await receivePhone({...data,actor:{id:session.userId,role:session.role}});return NextResponse.json({ok:true,...result});}
+ catch(error){
+  if(error instanceof z.ZodError)console.error("Purchase validation failed",error.issues.map(issue=>{const received=issue.path.reduce<unknown>((value,key)=>value&&typeof value==="object"?(value as Record<PropertyKey,unknown>)[key]:undefined,raw);return {path:issue.path.join("."),code:issue.code,message:issue.message,expected:"expected" in issue?issue.expected:undefined,receivedType:received===null?"null":Array.isArray(received)?"array":typeof received}}));
+  else console.error(error);
+  const message=error instanceof z.ZodError?`${error.issues[0]?.path.join(".")||"payload"}: ${error.issues[0]?.message??"Kiritilgan ma’lumotlarni tekshiring"}`:error instanceof Error?error.message:"Telefonni saqlashda xato";
+  return NextResponse.json({error:message},{status:400});
+ }
+}
