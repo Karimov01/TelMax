@@ -20,10 +20,10 @@ export async function listInventoryPage(search = "", category?: "SMARTPHONE" | "
   const db = getDb();
   const inventory=db.select({
     productId:purchaseBatches.productId,
-    quantity:sql<number>`sum(${purchaseBatches.availableQuantity})`.mapWith(Number),
-    purchasePrice:sql<number>`(array_agg(${purchaseBatches.unitCost}+${purchaseBatches.extraUnitCost} order by ${purchaseBatches.receivedAt},${purchaseBatches.id}))[1]`.mapWith(Number),
-    supplierName:sql<string|null>`(array_agg(${purchaseBatches.supplierName} order by ${purchaseBatches.receivedAt},${purchaseBatches.id}))[1]`,
-    supplierPhone:sql<string|null>`(array_agg(${purchaseBatches.supplierPhone} order by ${purchaseBatches.receivedAt},${purchaseBatches.id}))[1]`
+    quantity:sql<number>`sum(${purchaseBatches.availableQuantity})`.mapWith(Number).as("quantity"),
+    purchasePrice:sql<number>`(array_agg(${purchaseBatches.unitCost}+${purchaseBatches.extraUnitCost} order by ${purchaseBatches.receivedAt},${purchaseBatches.id}))[1]`.mapWith(Number).as("purchase_price"),
+    supplierName:sql<string|null>`(array_agg(${purchaseBatches.supplierName} order by ${purchaseBatches.receivedAt},${purchaseBatches.id}))[1]`.as("supplier_name"),
+    supplierPhone:sql<string|null>`(array_agg(${purchaseBatches.supplierPhone} order by ${purchaseBatches.receivedAt},${purchaseBatches.id}))[1]`.as("supplier_phone")
   }).from(purchaseBatches).where(gt(purchaseBatches.availableQuantity,0)).groupBy(purchaseBatches.productId).as("inventory_snapshot");
   const term=`%${search}%`;
   const conditions=[options.lowStock?sql`${inventory.quantity}<=${Math.max(1,Number(process.env.LOW_STOCK_THRESHOLD||2))}`:undefined,search?or(ilike(products.brand,term),ilike(products.model,term),ilike(products.storage,term),ilike(products.color,term),sql`exists(select 1 from inventory_units iu where iu.product_id=${products.id} and (iu.imei1 ilike ${term} or iu.product_code ilike ${term}))`):undefined,category?eq(products.category,category):undefined,options.condition?eq(products.condition,options.condition):undefined,options.platform?eq(products.platform,options.platform):undefined].filter(Boolean);
