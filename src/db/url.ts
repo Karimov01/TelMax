@@ -1,6 +1,5 @@
 export function databaseUrl() {
-  const value=process.env.DATABASE_URL ?? process.env.DATABASE_POSTGRES_URL;
-  return value&&/^postgres(?:ql)?:\/\//.test(value)?value:undefined;
+  return process.env.DATABASE_URL ?? process.env.DATABASE_POSTGRES_URL;
 }
 
 export function requireDatabaseUrl() {
