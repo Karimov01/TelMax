@@ -10,7 +10,7 @@ import {auditLogs,inventoryMovements,inventoryUnits,media,products,purchaseBatch
 export async function GET(request:Request){
  const session=await getSession();if(!session||!can(session.role,"inventory:read"))return NextResponse.json({error:"Ruxsat yo‘q"},{status:403});
  const u=new URL(request.url),category=(u.searchParams.get("category")||undefined) as "SMARTPHONE"|"FEATURE_PHONE"|undefined,platform=(u.searchParams.get("platform")||undefined) as "ANDROID"|"IOS"|"FEATURE"|undefined,sort=(u.searchParams.get("sort")||"newest") as "newest"|"price_asc"|"price_desc"|"stock_asc"|"stock_desc";
- try{const [result,stats]=await Promise.all([listInventoryPage(u.searchParams.get("q")??"",category,{condition:u.searchParams.get("condition")||undefined,platform,sort,page:Number(u.searchParams.get("page")||1),limit:20}),inventoryStats()]);return NextResponse.json({...result,stats});}
+ try{const [result,stats]=await Promise.all([listInventoryPage(u.searchParams.get("q")??"",category,{condition:u.searchParams.get("condition")||undefined,platform,sort,lowStock:u.searchParams.get("stock")==="low",page:Number(u.searchParams.get("page")||1),limit:20}),inventoryStats()]);return NextResponse.json({...result,stats});}
  catch(error){console.error(error);return NextResponse.json({error:"Ombor ma’lumotini olishda xato"},{status:500});}
 }
 
