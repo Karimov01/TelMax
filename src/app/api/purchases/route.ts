@@ -4,6 +4,8 @@ import {getSession} from "@/lib/session";
 import {purchaseInputSchema} from "@/lib/purchase-contract";
 import {receivePhone} from "@/services/purchases";
 
+export const runtime="nodejs";
+
 export async function POST(request:Request){
  const session=await getSession();if(!session)return NextResponse.json({error:"Ruxsat yo‘q"},{status:401});
  let raw:unknown;

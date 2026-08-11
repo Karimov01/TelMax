@@ -3,6 +3,8 @@ import {z} from "zod";
 import {getSession} from "@/lib/session";
 import {sellProduct} from "@/services/inventory";
 
+export const runtime="nodejs";
+
 const input=z.object({
  productId:z.coerce.number().int().positive(),quantity:z.coerce.number().int().positive(),unitSalePrice:z.coerce.number().int().positive(),
  customerName:z.string().trim().max(160).optional().default(""),

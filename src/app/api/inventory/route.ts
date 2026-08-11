@@ -4,7 +4,7 @@ import {and,eq,sql} from "drizzle-orm";
 import {getSession} from "@/lib/session";
 import {can} from "@/lib/permissions";
 import {inventoryStats,listInventoryPage} from "@/services/catalog";
-import {getDb} from "@/db/client";
+import {withTransaction} from "@/db/transaction";
 import {auditLogs,inventoryMovements,inventoryUnits,media,products,purchaseBatches,saleItems,sales} from "@/db/schema";
 
 export async function GET(request:Request){
@@ -17,7 +17,7 @@ export async function GET(request:Request){
 const edit=z.object({id:z.number().int().positive(),brand:z.string().max(100),model:z.string().min(1).max(160),description:z.string().max(2000).nullable().optional(),storage:z.string().max(50).nullable().optional(),ram:z.string().max(50).nullable().optional(),color:z.string().max(80).nullable().optional(),condition:z.string().max(50).nullable().optional(),salePrice:z.number().int().positive(),purchasePrice:z.number().int().positive().optional(),quantity:z.number().int().positive().optional(),imageUrl:z.string().url().max(2048).nullable().optional(),adjustmentReason:z.string().max(300).optional(),warrantyDays:z.number().int().min(0),isPublished:z.boolean()});
 export async function PATCH(request:Request){
  const s=await getSession();if(!s||!can(s.role,"inventory:write"))return NextResponse.json({error:"Ruxsat yo‘q"},{status:403});
- try{const d=edit.parse(await request.json()),db=getDb();await db.transaction(async tx=>{
+ try{const d=edit.parse(await request.json());await withTransaction(async tx=>{
   const [old]=await tx.select().from(products).where(eq(products.id,d.id)).limit(1);if(!old)throw new Error("Mahsulot topilmadi");
   const [stock]=await tx.select({quantity:sql<number>`coalesce(sum(${purchaseBatches.availableQuantity}),0)`}).from(purchaseBatches).where(eq(purchaseBatches.productId,d.id)),oldQuantity=Number(stock.quantity);
   if(d.quantity!==undefined&&d.quantity!==oldQuantity){
@@ -34,16 +34,22 @@ export async function PATCH(request:Request){
  });return NextResponse.json({ok:true});}catch(e){return NextResponse.json({error:e instanceof z.ZodError?"Maydonlarni tekshiring":e instanceof Error?e.message:"Tahrirlashda xato"},{status:400});}
 }
 
+export const runtime="nodejs";
 export async function DELETE(request:Request){
- const s=await getSession();if(!s||!can(s.role,"inventory:write"))return NextResponse.json({error:"Ruxsat yo‘q"},{status:403});
- const id=Number(new URL(request.url).searchParams.get("id"));if(!Number.isInteger(id)||id<1)return NextResponse.json({error:"ID noto‘g‘ri"},{status:400});
- try{const db=getDb();await db.transaction(async tx=>{
+ const s=await getSession();if(!s||!can(s.role,"inventory:write"))return NextResponse.json({success:false,error:{code:"FORBIDDEN",message:"Ruxsat yo‘q"}},{status:403});
+ const id=Number(new URL(request.url).searchParams.get("id"));if(!Number.isInteger(id)||id<1)return NextResponse.json({success:false,error:{code:"INVALID_ID",message:"Telefonni o‘chirib bo‘lmadi"}},{status:400});
+ try{await withTransaction(async tx=>{
   const [product]=await tx.select({id:products.id,isPublished:products.isPublished}).from(products).where(eq(products.id,id)).limit(1);if(!product)throw new Error("Telefon topilmadi");
   const [activeSale]=await tx.select({id:sales.id}).from(saleItems).innerJoin(sales,eq(sales.id,saleItems.saleId)).where(and(eq(saleItems.productId,id),eq(sales.status,"ACTIVE"))).limit(1);
-  if(activeSale)throw new Error("Bu telefonga tegishli faol savdo mavjud. Avval savdoni bekor qiling.");
+  if(activeSale)throw new Error("ACTIVE_SALE");
   await tx.update(products).set({isPublished:false,updatedAt:new Date()}).where(eq(products.id,id));
   await tx.update(purchaseBatches).set({availableQuantity:0,updatedAt:new Date()}).where(eq(purchaseBatches.productId,id));
   await tx.update(inventoryUnits).set({status:"ARCHIVED",updatedAt:new Date()}).where(eq(inventoryUnits.productId,id));
   await tx.insert(auditLogs).values({actorId:s.userId,action:"PRODUCT_ARCHIVED",entityType:"PRODUCT",entityId:id,details:{wasPublished:product.isPublished,archivedAt:new Date().toISOString()}});
- });return NextResponse.json({ok:true});}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Telefonni o‘chirishda xato"},{status:400});}
+ });return NextResponse.json({success:true,message:"Telefon o‘chirildi"});}catch(error){
+  console.error("Inventory archive failed",error);
+  const code=error instanceof Error&&error.message==="ACTIVE_SALE"?"ACTIVE_SALE":error instanceof Error&&error.message==="Telefon topilmadi"?"NOT_FOUND":"ARCHIVE_FAILED";
+  const message=code==="ACTIVE_SALE"?"Bu telefonga tegishli faol savdo mavjud. Avval Profil → Savdoni bekor qilish orqali savdoni bekor qiling.":code==="NOT_FOUND"?"Telefon topilmadi":"Telefonni o‘chirib bo‘lmadi";
+  return NextResponse.json({success:false,error:{code,message}},{status:code==="NOT_FOUND"?404:code==="ACTIVE_SALE"?409:500});
+ }
 }

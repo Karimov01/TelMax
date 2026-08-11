@@ -1,12 +1,9 @@
-import { Pool } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-serverless";
 import { and, asc, eq, gt, sql } from "drizzle-orm";
 import { auditLogs, customers, debts, inventoryMovements, inventoryUnits, products, purchaseBatches, saleItems, sales } from "@/db/schema";
 import type { Role } from "@/lib/permissions";
 import { can } from "@/lib/permissions";
-import { requireDatabaseUrl } from "@/db/url";
+import {withTransaction} from "@/db/transaction";
 
-function transactionalDb(){const pool=new Pool({connectionString:requireDatabaseUrl()});return {pool,db:drizzle(pool)};}
 export type SaleInput={productId:number;quantity:number;unitSalePrice:number;customerName?:string;customerPhone?:string;notes?:string;idempotencyKey:string;paymentMethod:"CASH"|"CARD"|"MIXED"|"TRANSFER"|"OTHER";actor:{id:number;role:Role}};
 export type CancellationItem={productId:number;batchId:number;inventoryUnitId:number|null;quantity:number;unitCostSnapshot:number;profitSnapshot:number};
 export function cancellationTotals(items:CancellationItem[]){return items.reduce((result,item)=>({quantity:result.quantity+item.quantity,cost:result.cost+item.unitCostSnapshot*item.quantity,profit:result.profit+item.profitSnapshot}),{quantity:0,cost:0,profit:0});}
@@ -15,8 +12,7 @@ export function assertSaleCancellable(status:string){if(status!=="ACTIVE")throw 
 export async function sellProduct(input:SaleInput){
  if(!can(input.actor.role,"sale:create"))throw new Error("Bu amal uchun ruxsat yo‘q");
  if(input.quantity<1||input.unitSalePrice<1)throw new Error("Sotuv ma’lumotlari noto‘g‘ri");
- const {pool,db}=transactionalDb();
- try{return await db.transaction(async tx=>{
+ return withTransaction(async tx=>{
   const [existing]=await tx.select({id:sales.id,subtotal:sales.subtotal,grossProfit:sales.grossProfit}).from(sales).where(eq(sales.idempotencyKey,input.idempotencyKey)).limit(1);
   if(existing)return {saleId:existing.id,remainingStock:-1,revenue:existing.subtotal,grossProfit:existing.grossProfit,replayed:true};
   const [product]=await tx.select().from(products).where(eq(products.id,input.productId)).limit(1);
@@ -51,13 +47,12 @@ export async function sellProduct(input:SaleInput){
   }
   await tx.insert(auditLogs).values({actorId:input.actor.id,action:"PHONE_SOLD",entityType:"SALE",entityId:sale.id,details:{productId:input.productId,quantity:input.quantity,subtotal,paymentMethod:input.paymentMethod,customerName,customerPhone}});
   return {saleId:sale.id,remainingStock:stock-input.quantity,revenue:subtotal,grossProfit:subtotal-totalCost,replayed:false};
- });}finally{await pool.end();}
+ });
 }
 
 export async function cancelSale(input:{saleId:number;reason?:string;actor:{id:number;role:Role}}){
  if(!can(input.actor.role,"sale:cancel"))throw new Error("Bu amal uchun ruxsat yo‘q");
- const {pool,db}=transactionalDb();
- try{return await db.transaction(async tx=>{
+ return withTransaction(async tx=>{
   const [sale]=await tx.select().from(sales).where(eq(sales.id,input.saleId)).for("update").limit(1);
   if(!sale)throw new Error("Savdo topilmadi");
   assertSaleCancellable(sale.status);
@@ -74,5 +69,5 @@ export async function cancelSale(input:{saleId:number;reason?:string;actor:{id:n
   const totals=cancellationTotals(items);
   await tx.insert(auditLogs).values({actorId:input.actor.id,action:"SALE_CANCELLED",entityType:"SALE",entityId:sale.id,details:{saleId:sale.id,productIds:[...new Set(items.map(x=>x.productId))],quantityReturned:totals.quantity,revenueRemoved:sale.subtotal,profitRemoved:sale.grossProfit,cancelledBy:input.actor.id,cancelledAt:new Date().toISOString(),reason:input.reason?.trim()||null}});
   return {saleId:sale.id,quantityReturned:totals.quantity,revenueRemoved:sale.subtotal,costRemoved:totals.cost,profitRemoved:sale.grossProfit};
- });}finally{await pool.end();}
+ });
 }
