@@ -5,7 +5,7 @@ import {getSession} from "@/lib/session";
 import {can} from "@/lib/permissions";
 import {inventoryStats,listInventoryPage} from "@/services/catalog";
 import {getDb} from "@/db/client";
-import {auditLogs,inventoryMovements,inventoryUnits,media,products,purchaseBatches} from "@/db/schema";
+import {auditLogs,inventoryMovements,inventoryUnits,media,products,purchaseBatches,saleItems,sales} from "@/db/schema";
 
 export async function GET(request:Request){
  const session=await getSession();if(!session||!can(session.role,"inventory:read"))return NextResponse.json({error:"Ruxsat yo‘q"},{status:403});
@@ -34,4 +34,16 @@ export async function PATCH(request:Request){
  });return NextResponse.json({ok:true});}catch(e){return NextResponse.json({error:e instanceof z.ZodError?"Maydonlarni tekshiring":e instanceof Error?e.message:"Tahrirlashda xato"},{status:400});}
 }
 
-export async function DELETE(request:Request){const s=await getSession();if(!s||!can(s.role,"inventory:write"))return NextResponse.json({error:"Ruxsat yo‘q"},{status:403});const id=Number(new URL(request.url).searchParams.get("id"));if(!Number.isInteger(id)||id<1)return NextResponse.json({error:"ID noto‘g‘ri"},{status:400});const db=getDb();await db.update(products).set({isPublished:false,updatedAt:new Date()}).where(eq(products.id,id));await db.update(purchaseBatches).set({availableQuantity:0,updatedAt:new Date()}).where(eq(purchaseBatches.productId,id));await db.update(inventoryUnits).set({status:"ARCHIVED",updatedAt:new Date()}).where(eq(inventoryUnits.productId,id));await db.insert(auditLogs).values({actorId:s.userId,action:"PRODUCT_ARCHIVED",entityType:"PRODUCT",entityId:id});return NextResponse.json({ok:true});}
+export async function DELETE(request:Request){
+ const s=await getSession();if(!s||!can(s.role,"inventory:write"))return NextResponse.json({error:"Ruxsat yo‘q"},{status:403});
+ const id=Number(new URL(request.url).searchParams.get("id"));if(!Number.isInteger(id)||id<1)return NextResponse.json({error:"ID noto‘g‘ri"},{status:400});
+ try{const db=getDb();await db.transaction(async tx=>{
+  const [product]=await tx.select({id:products.id,isPublished:products.isPublished}).from(products).where(eq(products.id,id)).limit(1);if(!product)throw new Error("Telefon topilmadi");
+  const [activeSale]=await tx.select({id:sales.id}).from(saleItems).innerJoin(sales,eq(sales.id,saleItems.saleId)).where(and(eq(saleItems.productId,id),eq(sales.status,"ACTIVE"))).limit(1);
+  if(activeSale)throw new Error("Bu telefonga tegishli faol savdo mavjud. Avval savdoni bekor qiling.");
+  await tx.update(products).set({isPublished:false,updatedAt:new Date()}).where(eq(products.id,id));
+  await tx.update(purchaseBatches).set({availableQuantity:0,updatedAt:new Date()}).where(eq(purchaseBatches.productId,id));
+  await tx.update(inventoryUnits).set({status:"ARCHIVED",updatedAt:new Date()}).where(eq(inventoryUnits.productId,id));
+  await tx.insert(auditLogs).values({actorId:s.userId,action:"PRODUCT_ARCHIVED",entityType:"PRODUCT",entityId:id,details:{wasPublished:product.isPublished,archivedAt:new Date().toISOString()}});
+ });return NextResponse.json({ok:true});}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Telefonni o‘chirishda xato"},{status:400});}
+}

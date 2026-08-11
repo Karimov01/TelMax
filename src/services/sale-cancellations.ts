@@ -1,0 +1,13 @@
+import {and,desc,eq,gte,ilike,lte,or,sql} from "drizzle-orm";
+import {getDb} from "@/db/client";
+import {inventoryUnits,media,products,saleItems,sales,users} from "@/db/schema";
+
+export type CancellableSale={id:number;number:string;soldAt:Date;customerName:string|null;customerPhone:string|null;paymentMethod:string;notes:string|null;seller:string|null;subtotal:number;grossProfit:number;productId:number;brand:string;model:string;category:"SMARTPHONE"|"FEATURE_PHONE";platform:string|null;storage:string|null;ram:string|null;color:string|null;quantity:number;unitSalePrice:number;unitCost:number;totalCost:number;imei:string|null;imageUrl:string|null};
+
+export async function listCancellableSales(options:{from:Date;to:Date;search?:string;id?:number}){
+ const db=getDb(),term=`%${options.search??""}%`;
+ const rows=await db.select({id:sales.id,number:sales.number,soldAt:sales.soldAt,customerName:sales.customerName,customerPhone:sales.customerPhone,paymentMethod:sales.paymentMethod,notes:sales.notes,seller:users.firstName,subtotal:sales.subtotal,grossProfit:sales.grossProfit,productId:products.id,brand:products.brand,model:products.model,category:products.category,platform:products.platform,storage:products.storage,ram:products.ram,color:products.color,quantity:saleItems.quantity,unitSalePrice:saleItems.unitSalePrice,unitCost:saleItems.unitCostSnapshot,imei:inventoryUnits.imei1,imageUrl:sql<string|null>`(select ${media.url} from ${media} where ${media.productId}=${products.id} order by ${media.sortOrder} limit 1)`}).from(sales).innerJoin(saleItems,eq(saleItems.saleId,sales.id)).innerJoin(products,eq(products.id,saleItems.productId)).leftJoin(inventoryUnits,eq(inventoryUnits.id,saleItems.inventoryUnitId)).leftJoin(users,eq(users.id,sales.soldBy)).where(and(eq(sales.status,"ACTIVE"),options.id?eq(sales.id,options.id):undefined,gte(sales.soldAt,options.from),lte(sales.soldAt,options.to),options.search?or(ilike(products.brand,term),ilike(products.model,term),ilike(sales.customerName,term),ilike(sales.customerPhone,term),ilike(inventoryUnits.imei1,term)):undefined)).orderBy(desc(sales.soldAt)).limit(250);
+ const grouped=new Map<number,CancellableSale>();
+ for(const row of rows){const quantity=Number(row.quantity),cost=Number(row.unitCost)*quantity,current=grouped.get(row.id);if(current){current.quantity+=quantity;current.totalCost+=cost;current.unitCost=Math.round(current.totalCost/current.quantity);current.imei??=row.imei;continue}grouped.set(row.id,{...row,subtotal:Number(row.subtotal),grossProfit:Number(row.grossProfit),quantity,unitSalePrice:Number(row.unitSalePrice),unitCost:Number(row.unitCost),totalCost:cost})}
+ return [...grouped.values()];
+}
