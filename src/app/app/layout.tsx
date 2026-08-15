@@ -8,5 +8,6 @@ import "../profile-mobile.css";
 import "../debts-mobile.css";
 import "../installments-mobile.css";
 import "../staff-mobile.css";
+import "../quick-actions-premium.css";
 export const metadata:Metadata={title:"TelMax",robots:{index:false,follow:false}};
 export default async function MiniLayout({children}:{children:React.ReactNode}){const session=process.env.NODE_ENV==="development"?{role:"OWNER" as const,name:"TelMax"}:await getSession();if(!session)return <AppShell><AuthGate/></AppShell>;if(session.role==="CUSTOMER")return <CustomerCatalog name={session.name}/>;return <AppShell role={session.role}>{children}</AppShell>}
