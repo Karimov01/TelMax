@@ -1,3 +1,7 @@
-import {notFound} from "next/navigation";import {PageHeader} from "@/components/page-header";import {LegacyModule} from "@/components/legacy-module";
+import {notFound,redirect} from "next/navigation";
+import {PageHeader} from "@/components/page-header";
+import {LegacyModule} from "@/components/legacy-module";
+import {getSession} from "@/lib/session";
+import {can} from "@/lib/permissions";
 const titles:Record<string,[string,string]>={investitsiya:['Investitsiya','Sarmoya, kapital va investitsiya tarixi'],qarzdorlar:['Qarzdorlar','Faol qarzlar va to‘lov muddatlari'],tolov:['To‘lov qabul qilish','Mijoz qarzlari bo‘yicha tushumlar'],'bolib-tolash':['Bo‘lib to‘lash','Hamkorlar va ulardagi telefonlar'],qaytarish:['Telefonni qaytarish','Qaytarilgan telefonlar tarixi'],sozlamalar:['Sozlamalar','Do‘kon va Telegram bot sozlamalari']};
-export default async function ModulePage({params}:{params:Promise<{module:string}>}){const {module}=await params,t=titles[module];if(!t)notFound();return <div className="page-pad inner-page"><PageHeader title={t[0]} description={t[1]} action={{href:'/app/boshqaruv',label:'Barchasi'}}/><LegacyModule module={module}/></div>}
+export default async function ModulePage({params}:{params:Promise<{module:string}>}){const [session,{module}]=await Promise.all([getSession(),params]),t=titles[module];if(!t)notFound();if(!session||!can(session.role,"report:read"))redirect("/app");return <div className="page-pad inner-page"><PageHeader title={t[0]} description={t[1]} action={{href:'/app/boshqaruv',label:'Barchasi'}}/><LegacyModule module={module}/></div>}
