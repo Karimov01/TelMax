@@ -1,5 +1,5 @@
 import {NextResponse} from "next/server";
-import {desc,eq} from "drizzle-orm";
+import {and,desc,eq} from "drizzle-orm";
 import {z} from "zod";
 import {getDb} from "@/db/client";
 import {users} from "@/db/schema";
@@ -22,6 +22,7 @@ export async function POST(request:Request){
  try{
   const data=createSchema.parse(await request.json()),db=getDb();
   const existing=await db.query.users.findFirst({where:eq(users.telegramId,data.telegramId)});
+  if(existing&&existing.role==="OWNER")return NextResponse.json({error:"Egasi akkauntini Sotuvchi qilib bo‘lmaydi"},{status:400});
   const [row]=existing
    ?await db.update(users).set({firstName:data.name,role:"STAFF",active:true,updatedAt:new Date()}).where(eq(users.id,existing.id)).returning()
    :await db.insert(users).values({telegramId:data.telegramId,firstName:data.name,role:"STAFF",active:true}).returning();
@@ -33,8 +34,8 @@ export async function PATCH(request:Request){
  const session=await guard();if(!session)return NextResponse.json({error:"Ruxsat yo‘q"},{status:403});
  try{
   const data=patchSchema.parse(await request.json());
-  const [row]=await getDb().update(users).set({active:data.active,updatedAt:new Date()}).where(eq(users.id,data.id)).returning({id:users.id,active:users.active,role:users.role});
-  if(!row||row.role!=="STAFF")return NextResponse.json({error:"Sotuvchi topilmadi"},{status:404});
+  const [row]=await getDb().update(users).set({active:data.active,updatedAt:new Date()}).where(and(eq(users.id,data.id),eq(users.role,"STAFF"))).returning({id:users.id,active:users.active,role:users.role});
+  if(!row)return NextResponse.json({error:"Sotuvchi topilmadi"},{status:404});
   return NextResponse.json({ok:true,item:row});
  }catch(error){const message=error instanceof z.ZodError?error.issues[0]?.message??"Ma’lumotni tekshiring":"Holat o‘zgarmadi";return NextResponse.json({error:message},{status:400});}
 }
