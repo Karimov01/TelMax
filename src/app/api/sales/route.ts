@@ -10,7 +10,9 @@ const input=z.object({
  customerName:z.string().trim().max(160).optional().default(""),
  customerPhone:z.string().trim().max(30).refine(v=>!v||/^\+?[\d\s()-]{7,25}$/.test(v),"Telefon raqamini tekshiring").optional().default(""),
  notes:z.string().trim().max(500).optional().default(""),idempotencyKey:z.string().uuid(),
- paymentMethod:z.enum(["CASH","CARD","MIXED","TRANSFER","OTHER"])
+ paymentMethod:z.enum(["CASH","CARD","MIXED","TRANSFER","OTHER"]),
+ paidAmount:z.coerce.number().int().min(0).optional(),
+ debtDueDate:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()
 });
 export async function POST(request:Request){
  const session=await getSession();if(!session)return NextResponse.json({error:"Ruxsat yo‘q"},{status:401});
