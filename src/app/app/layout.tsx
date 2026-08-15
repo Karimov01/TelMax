@@ -1,3 +1,3 @@
-import type {Metadata} from "next"; import {AppShell} from "@/components/app-shell"; import {AuthGate} from "@/components/auth-gate"; import {CustomerCatalog} from "@/components/customer-catalog"; import {getSession} from "@/lib/session";
+import type {Metadata} from "next"; import {AppShell} from "@/components/app-shell"; import {AuthGate} from "@/components/auth-gate"; import {CustomerCatalog} from "@/components/customer-catalog"; import {getSession} from "@/lib/session"; import "../report-mobile.css";
 export const metadata:Metadata={title:"Boshqaruv",robots:{index:false,follow:false}};
 export default async function MiniLayout({children}:{children:React.ReactNode}){const session=process.env.NODE_ENV==="development"?{role:"OWNER" as const,name:"TelMax"}:await getSession();if(!session)return <AppShell><AuthGate/></AppShell>;if(session.role==="CUSTOMER")return <CustomerCatalog name={session.name}/>;return <AppShell>{children}</AppShell>}
