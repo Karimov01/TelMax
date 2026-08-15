@@ -1,2 +1,10 @@
-import Link from "next/link";import {Smartphone} from "./icons";import {listPublicProducts} from "@/services/catalog";import {formatMoney} from "@/lib/money";
-export async function ProductGrid({title,description,category}:{title:string;description:string;category?:"SMARTPHONE"|"FEATURE_PHONE"}){const items=await listPublicProducts(category);return <section className="catalog-page"><header><span>TELEFONLAR</span><h1>{title}</h1><p>{description}</p></header>{items.length?<div className="public-product-grid">{items.map(item=><Link href={`/telefonlar/${item.slug}`} key={item.id}><div className="product-image">{item.imageUrl?<img src={item.imageUrl} alt={`${item.brand} ${item.model}`}/>:<Smartphone/>}</div><small>{item.category==="SMARTPHONE"?"Sensorli":"Tugmali"}</small><h2>{item.brand} {item.model}</h2><p>{item.storage&&`${item.storage} • `}{item.color||"TelMax kafolati"}</p><strong>{formatMoney(item.price)}</strong><span>Omborda {item.quantity} ta</span></Link>)}</div>:<div className="empty catalog-empty"><Smartphone/><strong>Hozircha telefonlar joylanmagan</strong><span>Yangi mahsulotlar ombordan public katalogga chiqariladi.</span></div>}</section>}
+import {getPublicCatalogFacets,listPublicCatalog} from "@/services/public-catalog";
+import {PublicCatalogClient} from "./public-catalog-client";
+
+export async function ProductGrid({title,description,category}:{title:string;description:string;category?:"SMARTPHONE"|"FEATURE_PHONE"}){
+ const [items,facets]=await Promise.all([listPublicCatalog({category}),getPublicCatalogFacets()]);
+ return <section className="catalog-page">
+  <header><span>TELEFONLAR</span><h1>{title}</h1><p>{description}</p></header>
+  <PublicCatalogClient items={items} facets={facets} category={category}/>
+ </section>;
+}
