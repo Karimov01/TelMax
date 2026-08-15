@@ -16,7 +16,10 @@ export async function reportSummary(f:ReportFilters){
  const durationDays=Math.max(1,Math.ceil(span/86400000));
  const bucket=durationDays<=1?"hour":durationDays>45?"week":"day";
  const bucketSql=bucket==="hour"?sql`date_trunc('hour', ${sales.soldAt} at time zone ${BUSINESS_TIME_ZONE})`:bucket==="week"?sql`date_trunc('week', ${sales.soldAt} at time zone ${BUSINESS_TIME_ZONE})`:sql`date_trunc('day', ${sales.soldAt} at time zone ${BUSINESS_TIME_ZONE})`;
- const trend=await db.select({bucket:bucketSql,revenue:sql<number>`coalesce(sum(${sales.subtotal}),0)`,profit:sql<number>`coalesce(sum(${sales.grossProfit}),0)`}).from(sales).where(activeWhere(f)).groupBy(bucketSql).orderBy(bucketSql);
+ // GROUP BY/ORDER BY the first selected expression. Reusing bucketSql directly can
+ // generate separate bind parameters for the timezone in SELECT/GROUP BY on Neon,
+ // causing PostgreSQL 42803 even though the expressions are logically identical.
+ const trend=await db.select({bucket:bucketSql,revenue:sql<number>`coalesce(sum(${sales.subtotal}),0)`,profit:sql<number>`coalesce(sum(${sales.grossProfit}),0)`}).from(sales).where(activeWhere(f)).groupBy(sql`1`).orderBy(sql`1`);
  const top=await db.select({productId:products.id,brand:products.brand,model:products.model,storage:products.storage,color:products.color,platform:products.platform,quantity:sql<number>`coalesce(sum(${saleItems.quantity}),0)`,revenue:sql<number>`coalesce(sum(${saleItems.quantity}*${saleItems.unitSalePrice}),0)`,imageUrl:sql<string|null>`(select m.url from media m where m.product_id=${products.id} order by m.sort_order,m.id limit 1)`}).from(saleItems).innerJoin(sales,eq(sales.id,saleItems.saleId)).innerJoin(products,eq(products.id,saleItems.productId)).where(itemWhere(f)).groupBy(products.id).orderBy(desc(sql`sum(${saleItems.quantity})`),desc(sql`sum(${saleItems.quantity}*${saleItems.unitSalePrice})`)).limit(5);
  const revenue=n(summary.revenue),count=n(summary.count),profit=n(summary.profit);
  return {kpi:{revenue,profit,count,average:count?Math.round(revenue/count):0},previous:{revenue:n(previous.revenue),profit:n(previous.profit),count:n(previous.count)},trend:trend.map(x=>({bucket:String(x.bucket),revenue:n(x.revenue),profit:n(x.profit)})),top:top.map(x=>({...x,quantity:n(x.quantity),revenue:n(x.revenue)}))};
