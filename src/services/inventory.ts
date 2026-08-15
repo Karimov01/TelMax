@@ -4,7 +4,7 @@ import type { Role } from "@/lib/permissions";
 import { can } from "@/lib/permissions";
 import {withTransaction} from "@/db/transaction";
 
-export type SaleInput={productId:number;quantity:number;unitSalePrice:number;customerName?:string;customerPhone?:string;notes?:string;idempotencyKey:string;paymentMethod:"CASH"|"CARD"|"MIXED"|"TRANSFER"|"OTHER";actor:{id:number;role:Role}};
+export type SaleInput={productId:number;quantity:number;unitSalePrice:number;customerName?:string;customerPhone?:string;notes?:string;idempotencyKey:string;paymentMethod:"CASH"|"CARD"|"MIXED"|"TRANSFER"|"OTHER";paidAmount?:number;debtDueDate?:string;actor:{id:number;role:Role}};
 export type CancellationItem={productId:number;batchId:number;inventoryUnitId:number|null;quantity:number;unitCostSnapshot:number;profitSnapshot:number};
 export function cancellationTotals(items:CancellationItem[]){return items.reduce((result,item)=>({quantity:result.quantity+item.quantity,cost:result.cost+item.unitCostSnapshot*item.quantity,profit:result.profit+item.profitSnapshot}),{quantity:0,cost:0,profit:0});}
 export function assertSaleCancellable(status:string){if(status!=="ACTIVE")throw new Error("Bu savdo allaqachon bekor qilingan");}
@@ -21,13 +21,16 @@ export async function sellProduct(input:SaleInput){
   const stock=batches.reduce((n,b)=>n+b.availableQuantity,0);
   if(stock<input.quantity)throw new Error("Omborda yetarli telefon mavjud emas");
   const customerName=input.customerName?.trim()||null,customerPhone=input.customerPhone?.trim()||null;
+  const subtotal=input.unitSalePrice*input.quantity,paidAmount=input.paidAmount??subtotal,debtAmount=subtotal-paidAmount;
+  if(paidAmount<0||paidAmount>subtotal)throw new Error("Boshlang‘ich to‘lov summasini tekshiring");
+  if(debtAmount>0&&(!customerName||!customerPhone))throw new Error("Qarzga sotishda mijoz ismi va telefon raqami majburiy");
+  if(debtAmount>0&&!input.debtDueDate)throw new Error("Qarz muddati kiritilishi kerak");
   let customerId:number|null=null;
   if(customerPhone){
    const [found]=await tx.select().from(customers).where(eq(customers.phone,customerPhone)).limit(1);
    if(found){customerId=found.id;if(customerName&&customerName!==found.name)await tx.update(customers).set({name:customerName,updatedAt:new Date()}).where(eq(customers.id,found.id));}
    else if(customerName){const [created]=await tx.insert(customers).values({name:customerName,phone:customerPhone}).returning();customerId=created.id;}
   }
-  const subtotal=input.unitSalePrice*input.quantity;
   let remaining=input.quantity,totalCost=0;
   const allocations:{batchId:number;quantity:number;unitCost:number}[]=[];
   for(const batch of batches){
@@ -36,7 +39,7 @@ export async function sellProduct(input:SaleInput){
    allocations.push({batchId:batch.id,quantity:take,unitCost});totalCost+=take*unitCost;remaining-=take;
    await tx.update(purchaseBatches).set({availableQuantity:sql`${purchaseBatches.availableQuantity}-${take}`,updatedAt:new Date()}).where(and(eq(purchaseBatches.id,batch.id),sql`${purchaseBatches.availableQuantity} >= ${take}`));
   }
-  const [sale]=await tx.insert(sales).values({number:`TM-${Date.now()}`,idempotencyKey:input.idempotencyKey,customerId,customerName,customerPhone,soldBy:input.actor.id,subtotal,paidAmount:subtotal,cashAmount:input.paymentMethod==="CASH"?subtotal:0,cardAmount:input.paymentMethod==="CARD"?subtotal:0,debtAmount:0,grossProfit:subtotal-totalCost,paymentMethod:input.paymentMethod,notes:input.notes?.trim()||null}).returning();
+  const [sale]=await tx.insert(sales).values({number:`TM-${Date.now()}`,idempotencyKey:input.idempotencyKey,customerId,customerName,customerPhone,soldBy:input.actor.id,subtotal,paidAmount,cashAmount:input.paymentMethod==="CASH"?paidAmount:0,cardAmount:input.paymentMethod==="CARD"?paidAmount:0,debtAmount,debtDueDate:debtAmount>0?input.debtDueDate:null,grossProfit:subtotal-totalCost,paymentMethod:input.paymentMethod,notes:input.notes?.trim()||null}).returning();
   for(const a of allocations){
    const units=product.category==="SMARTPHONE"?await tx.select().from(inventoryUnits).where(and(eq(inventoryUnits.productId,input.productId),eq(inventoryUnits.batchId,a.batchId),eq(inventoryUnits.status,"AVAILABLE"))).for("update").limit(a.quantity):[];
    if(product.category==="SMARTPHONE"&&units.length<a.quantity)throw new Error("Sensorli telefonlar omborda yetarli emas");
@@ -45,8 +48,9 @@ export async function sellProduct(input:SaleInput){
    else await tx.insert(saleItems).values({saleId:sale.id,productId:input.productId,batchId:a.batchId,quantity:a.quantity,unitSalePrice:input.unitSalePrice,unitCostSnapshot:a.unitCost,profitSnapshot:(input.unitSalePrice-a.unitCost)*a.quantity});
    await tx.insert(inventoryMovements).values({productId:input.productId,batchId:a.batchId,type:"SALE",quantity:-a.quantity,referenceType:"SALE",referenceId:sale.id,actorId:input.actor.id});
   }
-  await tx.insert(auditLogs).values({actorId:input.actor.id,action:"PHONE_SOLD",entityType:"SALE",entityId:sale.id,details:{productId:input.productId,quantity:input.quantity,subtotal,paymentMethod:input.paymentMethod,customerName,customerPhone}});
-  return {saleId:sale.id,remainingStock:stock-input.quantity,revenue:subtotal,grossProfit:subtotal-totalCost,replayed:false};
+  if(debtAmount>0)await tx.insert(debts).values({saleId:sale.id,totalAmount:debtAmount,paidAmount:0,remainingAmount:debtAmount,dueDate:input.debtDueDate!,status:"ACTIVE"});
+  await tx.insert(auditLogs).values({actorId:input.actor.id,action:"PHONE_SOLD",entityType:"SALE",entityId:sale.id,details:{productId:input.productId,quantity:input.quantity,subtotal,paidAmount,debtAmount,debtDueDate:input.debtDueDate??null,paymentMethod:input.paymentMethod,customerName,customerPhone}});
+  return {saleId:sale.id,remainingStock:stock-input.quantity,revenue:subtotal,grossProfit:subtotal-totalCost,debtAmount,replayed:false};
  });
 }
 
