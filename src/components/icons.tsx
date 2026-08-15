@@ -1,2 +1,2 @@
-import { BarChart3, Box, CalendarDays, ChevronRight, CircleDollarSign, Home, PackagePlus, Search, ShoppingBag, ShoppingCart, Smartphone, User, WalletCards } from "lucide-react";
-export {BarChart3,Box,CalendarDays,ChevronRight,CircleDollarSign,Home,PackagePlus,Search,ShoppingBag,ShoppingCart,Smartphone,User,WalletCards};
+import { BarChart3, Box, Building2, CalendarDays, ChevronRight, CircleDollarSign, CreditCard, HandCoins, Home, PackagePlus, RotateCcw, Search, Settings, ShoppingBag, ShoppingCart, Smartphone, Undo2, User, WalletCards } from "lucide-react";
+export {BarChart3,Box,Building2,CalendarDays,ChevronRight,CircleDollarSign,CreditCard,HandCoins,Home,PackagePlus,RotateCcw,Search,Settings,ShoppingBag,ShoppingCart,Smartphone,Undo2,User,WalletCards};
