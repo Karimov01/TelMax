@@ -13,3 +13,5 @@ drizzle/meta
 .env*
 !.env.vps.example
 .neon-url.tmp
+.r2-credentials.tmp
+.deployment-secrets.tmp
