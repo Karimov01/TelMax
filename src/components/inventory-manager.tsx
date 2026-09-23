@@ -4,13 +4,14 @@ import Link from "next/link";
 import {useSearchParams} from "next/navigation";
 import {Box,Search} from "./icons";
 import {formatMoney} from "@/lib/money";
+import {OptimizedImage} from "@/components/optimized-image";
 
 type Category="SMARTPHONE"|"FEATURE_PHONE";type Platform="ANDROID"|"IOS"|"FEATURE";type Sort="newest"|"price_asc"|"price_desc"|"stock_asc"|"stock_desc";
 type Item={id:number;category:Category;platform:Platform|null;brand:string;model:string;description:string|null;storage:string|null;ram:string|null;color:string|null;condition:string|null;warrantyDays:number;salePrice:number;purchasePrice:number;quantity:number;imei:string|null;code:string|null;imageUrl:string|null;isPublished:boolean;batteryHealth:string|null;faceId:string|null;trueTone:string|null;icloud:string|null;repair:string|null;technicalState:string|null;supplierName:string|null;supplierPhone:string|null};
 type Stats={total:number;value:number;smartphones:number;featurePhones:number;brands:{name:string;quantity:number;value:number}[];conditions:{name:string;quantity:number}[]};
 const emptyStats:Stats={total:0,value:0,smartphones:0,featurePhones:0,brands:[],conditions:[]};
 function technical(item:Item){try{return JSON.parse(item.technicalState||"{}") as {screen?:string;battery?:string}}catch{return {}}}
-function ImageBox({item}:{item:Item}){return item.imageUrl?<img className="inventory-thumb" src={item.imageUrl} alt=""/>:<div className="inventory-placeholder">{item.category==="SMARTPHONE"?"▯":"▦"}</div>}
+function ImageBox({item}:{item:Item}){return item.imageUrl?<OptimizedImage className="inventory-thumb" src={item.imageUrl} alt={`${item.brand} ${item.model}`} width={160} height={190} sizes="160px"/>:<div className="inventory-placeholder">{item.category==="SMARTPHONE"?"▯":"▦"}</div>}
 
 export function InventoryManager(){
  const routeParams=useSearchParams(),lowOnly=routeParams.get("stock")==="low",initialProduct=routeParams.get("product");

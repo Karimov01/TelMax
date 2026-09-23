@@ -1,13 +1,14 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
 import {formatMoney} from "@/lib/money";
+import {OptimizedImage} from "@/components/optimized-image";
 
 type Sale={id:number;number:string;soldAt:string;customerName:string|null;customerPhone:string|null;paymentMethod:string;notes:string|null;seller:string|null;subtotal:number;grossProfit:number;brand:string;model:string;category:"SMARTPHONE"|"FEATURE_PHONE";platform:string|null;storage:string|null;ram:string|null;color:string|null;quantity:number;unitSalePrice:number;unitCost:number;totalCost:number;imei:string|null;imageUrl:string|null};
 type Period="today"|"7"|"30"|"month";
 const payment:Record<string,string>={CASH:"Naqd pul",CARD:"Bank kartasi",TRANSFER:"Pul o‘tkazish",MIXED:"Aralash",OTHER:"Boshqa"};
 function day(value:Date){return value.toLocaleDateString("en-CA",{timeZone:"Asia/Tashkent"})}
 function range(period:Period){const now=new Date(),from=new Date(now);if(period==="7")from.setDate(from.getDate()-6);if(period==="30")from.setDate(from.getDate()-29);if(period==="month")from.setDate(1);return {from:day(from),to:day(now)}}
-function Phone({sale}:{sale:Sale}){return sale.imageUrl?<img src={sale.imageUrl} alt=""/>:<i>{sale.category==="FEATURE_PHONE"?"▦":"▯"}</i>}
+function Phone({sale}:{sale:Sale}){return sale.imageUrl?<OptimizedImage src={sale.imageUrl} alt={`${sale.brand} ${sale.model}`} width={96} height={112} sizes="96px"/>:<i>{sale.category==="FEATURE_PHONE"?"▦":"▯"}</i>}
 
 export function SaleCancellationManager(){
  const [period,setPeriod]=useState<Period>("today"),[query,setQuery]=useState(""),[items,setItems]=useState<Sale[]>([]),[selected,setSelected]=useState<Sale|null>(null),[stage,setStage]=useState<"list"|"detail"|"confirm"|"success">("list"),[reason,setReason]=useState("Xato sotuv"),[busy,setBusy]=useState(false),[error,setError]=useState(""),[result,setResult]=useState<{quantityReturned:number;revenueRemoved:number;costRemoved:number;profitRemoved:number}|null>(null);

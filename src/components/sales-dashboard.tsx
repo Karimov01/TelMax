@@ -3,6 +3,7 @@ import {CircleDollarSign, PackagePlus, ShoppingBag} from "./icons";
 import {TmLogo} from "./tm-logo";
 import {formatMoney} from "@/lib/money";
 import type {SalesDashboardData} from "@/services/sales-dashboard";
+import {OptimizedImage} from "./optimized-image";
 
 export function SalesDashboard({data}:{data:SalesDashboardData}){
  return <div className="sales-dashboard page-pad">
@@ -17,7 +18,7 @@ export function SalesDashboard({data}:{data:SalesDashboardData}){
   <Link className="new-sale-button" href="/app/sotish?new=1">＋ Yangi sotuv</Link>
   <div className="sales-shortcuts"><Link href="/app/sotib-olish"><PackagePlus/>Kirim (telefon olish)</Link><Link href="/app/hisobot">▣ Savdo statistikasi</Link></div>
   <section className="recent-sales"><div className="section-title"><h2>So‘nggi sotuvlar</h2><Link href="/app/tarix">Barchasi ›</Link></div>
-   <div className="sales-list">{data.recent.length?data.recent.map(s=><Link href={`/app/tarix/${s.id}`} key={s.id}>{s.imageUrl?<img className="sale-thumb" src={s.imageUrl} alt=""/>:<span className="sale-icon">{s.category==="SMARTPHONE"?"▯":"▦"}</span>}<span><strong>{s.brand} {s.model}</strong><small>{s.category==="FEATURE_PHONE"?"Tugmali":s.storage}{s.color?` • ${s.color}`:""}</small><small>{s.quantity} dona • {formatMoney(s.total)}</small></span><span className="sale-money"><small>{new Intl.DateTimeFormat("uz-UZ",{timeZone:"Asia/Tashkent",hour:"2-digit",minute:"2-digit"}).format(s.soldAt)}</small><em>+{formatMoney(s.profit)}</em></span></Link>):<div className="empty"><ShoppingBag/><strong>Hali sotuv yo‘q</strong><span>Birinchi sotuv shu yerda ko‘rinadi.</span></div>}</div>
+   <div className="sales-list">{data.recent.length?data.recent.map(s=><Link href={`/app/tarix/${s.id}`} key={s.id}>{s.imageUrl?<OptimizedImage className="sale-thumb" src={s.imageUrl} alt={`${s.brand} ${s.model}`} width={96} height={112} sizes="96px"/>:<span className="sale-icon">{s.category==="SMARTPHONE"?"▯":"▦"}</span>}<span><strong>{s.brand} {s.model}</strong><small>{s.category==="FEATURE_PHONE"?"Tugmali":s.storage}{s.color?` • ${s.color}`:""}</small><small>{s.quantity} dona • {formatMoney(s.total)}</small></span><span className="sale-money"><small>{new Intl.DateTimeFormat("uz-UZ",{timeZone:"Asia/Tashkent",hour:"2-digit",minute:"2-digit"}).format(s.soldAt)}</small><em>+{formatMoney(s.profit)}</em></span></Link>):<div className="empty"><ShoppingBag/><strong>Hali sotuv yo‘q</strong><span>Birinchi sotuv shu yerda ko‘rinadi.</span></div>}</div>
   </section>
  </div>;
 }

@@ -5,10 +5,11 @@ import {getSession} from "@/lib/session";
 import {can} from "@/lib/permissions";
 import {BUSINESS_TIME_ZONE} from "@/lib/constants";
 import {TmLogo} from "@/components/tm-logo";
+import {OptimizedImage} from "@/components/optimized-image";
 import {BarChart3,Box,CalendarDays,ChevronRight,CircleDollarSign,PackagePlus,ShoppingBag,ShoppingCart} from "@/components/icons";
 export const dynamic="force-dynamic";
 function Change({current,previous}:{current:number;previous:number}){if(!previous)return <small>Kecha: {previous.toLocaleString("uz-UZ")}{current>0&&<b className="up"> Yangi</b>}</small>;const percent=Math.round((current-previous)/previous*100),up=percent>=0;return <small>Kecha: {previous.toLocaleString("uz-UZ")} <b className={up?"up":"down"}>{up?"↑":"↓"} {Math.abs(percent)}%</b></small>}
-function PhoneImage({url,feature=false}:{url:string|null;feature?:boolean}){return url?<img src={url} alt=""/>:<span className="home-phone-fallback">{feature?"▦":"▯"}</span>}
+function PhoneImage({url,feature=false}:{url:string|null;feature?:boolean}){return url?<OptimizedImage src={url} alt="Telefon" width={96} height={112} sizes="96px"/>:<span className="home-phone-fallback">{feature?"▦":"▯"}</span>}
 export default async function Dashboard(){const [d,session]=await Promise.all([getDashboardData(),process.env.NODE_ENV==="development"?Promise.resolve({name:"Kamoliddin",role:"OWNER" as const}):getSession()]);const showReport=!!session&&can(session.role,"report:read"),seller=session?.role==="STAFF",now=new Date(),date=new Intl.DateTimeFormat("uz-UZ",{timeZone:BUSINESS_TIME_ZONE,day:"numeric",month:"long",year:"numeric"}).format(now),weekday=new Intl.DateTimeFormat("uz-UZ",{timeZone:BUSINESS_TIME_ZONE,weekday:"long"}).format(now);
  return <div className="home-dashboard page-pad">
   <header className="app-header"><div className="brand-row"><TmLogo/><div><strong>Tel<span>Max</span></strong><small>Telefon Do‘koni</small></div></div><button className="home-bell" aria-label="Bildirishnomalar">♧</button></header>
