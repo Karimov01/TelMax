@@ -2,8 +2,8 @@
 
 Ushbu serverda Nginx va boshqa loyihalar mavjud. TelMax faqat
 `127.0.0.1:3020` portiga ulanadi; tashqi HTTP/HTTPS trafikni mavjud Nginx
-boshqaradi. Neon PostgreSQL va Cloudflare R2 tashqi boshqariladigan xizmatlar
-bo'lib qoladi.
+boshqaradi. PostgreSQL alohida Docker volume'da VPS ichida ishlaydi.
+Cloudflare R2 faqat rasmlar uchun ishlatiladi.
 
 ## O'rnatish
 
@@ -17,8 +17,8 @@ docker compose -p telmax --env-file .env.production up -d --build
 docker compose -p telmax ps
 ```
 
-Vercel Environment Variables ichidagi Neon, Telegram va R2 qiymatlarini
-`.env.production` ga ko'chiring. Faylni Git'ga kiritmang.
+`POSTGRES_PASSWORD` uchun kuchli tasodifiy parol yarating. Telegram va R2
+qiymatlarini `.env.production` ga kiriting. Faylni Git'ga kiritmang.
 
 ## Nginx va HTTPS
 
@@ -50,6 +50,7 @@ BotFather'dagi Mini App URL `https://telmax.uz/app` bo'lsin.
 curl http://127.0.0.1:3020/api/health
 curl -I https://telmax.uz
 docker compose -p telmax logs --tail=100 telmax
+docker compose -p telmax exec postgres pg_isready -U telmax -d telmax
 ```
 
 Sayt, Mini App login, telefon olish/sotish, R2 rasm yuklash va savdoni bekor
@@ -68,5 +69,6 @@ docker compose -p telmax --env-file .env.production up -d --build
 - Secretlarni chat, Git yoki screenshotda oshkor qilmang.
 - Cloudflare SSL/TLS rejimi `Full (strict)` bo'lsin.
 - Sertifikat olishda Cloudflare proxy vaqtincha `DNS only` bo'lsin.
-- Neon URL'da `sslmode=require` saqlansin.
+- PostgreSQL porti internetga chiqarilmasin; u faqat Docker ichki tarmog'ida.
+- `telmax_postgres_data` volume'ini muntazam zaxiralang.
 - `video.telmax.uz` va boshqa Nginx konfiguratsiyalariga tegmang.

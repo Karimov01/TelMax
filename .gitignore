@@ -12,3 +12,4 @@ drizzle/meta
 .vercel
 .env*
 !.env.vps.example
+.neon-url.tmp
