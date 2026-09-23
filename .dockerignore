@@ -1,0 +1,13 @@
+.git
+.next
+.vercel
+node_modules
+.pnpm-store
+.env
+.env.*
+!.env.vps.example
+coverage
+*.log
+*.tsbuildinfo
+AGENTS.md
+CLAUDE.md
